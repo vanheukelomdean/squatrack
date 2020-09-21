@@ -1,5 +1,5 @@
 # squatrack
-This project is an application of convolutional pose machine used for human pose estimation to provide analysis of power lifting form. 
+This project is an application of convolutional pose machine used for human pose estimation to provide a safety and efficiency analysis of power lifting form. 
 
 ## Design Plans 
 
