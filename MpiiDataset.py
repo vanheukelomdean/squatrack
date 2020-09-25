@@ -9,7 +9,7 @@ MPII_FIELDS = ['NAME','r ankle_X','r ankle_Y', 'r knee_X','r knee_Y', 'r hip_X',
 DATASET_SIZE = 24984 / 100
 
 class MpiiDataset():
-  def __init__(self, image_dir, annotation_path, train=True, shuffle=True, csv=False):
+  def __init__(self, image_dir, annotation_path, train=True, shuffle=True, csv=False, filter = []):
     self.network_input_dim = 368
     self.train = train
     self.shuffle = shuffle
@@ -26,9 +26,9 @@ class MpiiDataset():
 
     obj = release[0,0]
 
-    annolist = obj.__dict__['annolist']
-    train_flags = obj.__dict__['img_train']
-    act = obj.__dict__['act']
+    annolist = obj.annolist
+    train_flags = obj.img_train
+    act = obj.act
 
     self.labels = pd.DataFrame(columns=MPII_FIELDS)
 
@@ -38,7 +38,7 @@ class MpiiDataset():
       # Only save training or test images
       if not train_flags[0,i] == self.train:
         continue
-
+        
       temp = []
       obj_list = annolist[0,i]
       obj_act = act[i,0]
@@ -54,14 +54,16 @@ class MpiiDataset():
 
       if 'annopoints' not in obj_rect._fieldnames:
         continue
+
       
       # Write image name to record
       name = obj_img.__dict__['name'][0]
       annopoints = obj_rect.__dict__['annopoints']
-
-      if not (name == "000001163.jpg" or name == '014378517.jpg'):
-        continue
+      
       if annopoints.shape[0]==0:
+        continue
+        
+      if not filter == [] and not name in filter:
         continue
 
       points = annopoints[0,0].__dict__['point']
@@ -162,14 +164,18 @@ class MpiiDataset():
 
     return crop_image, transformed_labels
 
-  def get_data(self, images):
+  def get_data(self, validation_split=0.2):
+    images = [f for f in os.listdir(self.image_dir)if os.path.isfile(os.path.join(self.image_dir, f))]
 
     # shuffle all labels
     if self.shuffle:
-        self.labels = self.labels.sample(frac=1).reset_index(drop=True)
+        self.labels = shuffle(self.labels)
 
-    #compute label-image set intersection
-    valid_dataset = list (set(images) & set(mpii.bboxes.keys()))
+    #label_images = self.labels['NAME'].to_list()
+    # compute label-image set intersection
+    dataset = list (set(self.labels['NAME'].to_list()) & set(images))
 
-    for image_name in valid_dataset:
+
+    train_len = int(len(dataset) * (1 - validation_split))
+    for image_name in dataset[:train_len]:
       yield self.preprocess_image(image_name)
